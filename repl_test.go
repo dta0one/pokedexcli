@@ -15,12 +15,20 @@ func TestCleanInput(t *testing.T) {
 			input:    "Charmander Bulbasaur PIKACHU",
 			expected: []string{"charmander", "bulbasaur", "pikachu"},
 		},
+		{
+			input:    "   ",
+			expected: []string{},
+		},
+		{
+			input:    "help",
+			expected: []string{"help"},
+		},
 		// You can add more test cases here!
 	}
 
 	for _, c := range cases {
 		actual := cleanInput(c.input)
-		
+
 		if len(actual) != len(c.expected) {
 			t.Errorf("mismatched lengths for input %q: got %d, expected %d", c.input, len(actual), len(c.expected))
 			continue

@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/dta0one/pokedexcli/internal/pokecache"
 )
 
 type config struct {
+	cache               pokecache.Cache
 	nextLocationAreaURL *string
 	prevLocationAreaURL *string
 }
@@ -73,7 +76,7 @@ func commandHelp(cfg *config) error {
 }
 
 func commandMap(cfg *config) error {
-	resp, err := fetchLocationAreas(cfg.nextLocationAreaURL)
+	resp, err := fetchLocationAreas(cfg, cfg.nextLocationAreaURL)
 	if err != nil {
 		return err
 	}
@@ -93,7 +96,7 @@ func commandMapb(cfg *config) error {
 		return nil
 	}
 
-	resp, err := fetchLocationAreas(cfg.prevLocationAreaURL)
+	resp, err := fetchLocationAreas(cfg, cfg.prevLocationAreaURL)
 	if err != nil {
 		return err
 	}

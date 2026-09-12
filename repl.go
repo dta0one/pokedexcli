@@ -8,7 +8,8 @@ import (
 )
 
 type config struct {
-	// State fields (like PokeAPI client and pagination URLs) will be added here in upcoming lessons
+	nextLocationAreaURL *string
+	prevLocationAreaURL *string
 }
 
 type cliCommand struct {
@@ -71,12 +72,57 @@ func commandHelp(cfg *config) error {
 	return nil
 }
 
+func commandMap(cfg *config) error {
+	resp, err := fetchLocationAreas(cfg.nextLocationAreaURL)
+	if err != nil {
+		return err
+	}
+
+	cfg.nextLocationAreaURL = resp.Next
+	cfg.prevLocationAreaURL = resp.Previous
+
+	for _, area := range resp.Results {
+		fmt.Println(area.Name)
+	}
+	return nil
+}
+
+func commandMapb(cfg *config) error {
+	if cfg.prevLocationAreaURL == nil {
+		fmt.Println("you're on the first page")
+		return nil
+	}
+
+	resp, err := fetchLocationAreas(cfg.prevLocationAreaURL)
+	if err != nil {
+		return err
+	}
+
+	cfg.nextLocationAreaURL = resp.Next
+	cfg.prevLocationAreaURL = resp.Previous
+
+	for _, area := range resp.Results {
+		fmt.Println(area.Name)
+	}
+	return nil
+}
+
 func getCommands() map[string]cliCommand {
 	return map[string]cliCommand{
 		"help": {
 			name:        "help",
 			description: "Displays a help message",
 			callback:    commandHelp,
+		},
+		"map": {
+			name:        "map",
+			description: "Displays the next 20 location areas",
+			callback:    commandMap,
+		},
+		"mapb": {
+			name:        "mapb",
+			description: "Displays the previous 20 location areas",
+			callback:    commandMapb,
 		},
 		"exit": {
 			name:        "exit",

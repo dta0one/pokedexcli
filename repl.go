@@ -18,7 +18,7 @@ type config struct {
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config) error
+	callback    func(*config, []string) error // 👈 Add []string for args
 }
 
 func startRepl(cfg *config) {
@@ -38,6 +38,10 @@ func startRepl(cfg *config) {
 		}
 
 		commandName := words[0]
+		args := []string{}
+		if len(words) > 1 {
+			args = words[1:] // 👈 Extract any arguments passed after the command
+		}
 
 		cmd, exists := commands[commandName]
 		if !exists {
@@ -45,9 +49,12 @@ func startRepl(cfg *config) {
 			continue
 		}
 
-		err := cmd.callback(cfg)
+		err := cmd.callback(cfg, args)
 		if err != nil {
 			fmt.Println(err)
+		}
+		if err := scanner.Err(); err != nil {
+			fmt.Println("Error reading input:", err)
 		}
 	}
 }
@@ -56,13 +63,13 @@ func cleanInput(text string) []string {
 	return strings.Fields(strings.ToLower(text))
 }
 
-func commandExit(cfg *config) error {
+func commandExit(cfg *config, args []string) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(cfg *config) error {
+func commandHelp(cfg *config, args []string) error {
 	fmt.Println()
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
@@ -75,7 +82,7 @@ func commandHelp(cfg *config) error {
 	return nil
 }
 
-func commandMap(cfg *config) error {
+func commandMap(cfg *config, args []string) error {
 	resp, err := fetchLocationAreas(cfg, cfg.nextLocationAreaURL)
 	if err != nil {
 		return err
@@ -90,7 +97,7 @@ func commandMap(cfg *config) error {
 	return nil
 }
 
-func commandMapb(cfg *config) error {
+func commandMapb(cfg *config, args []string) error {
 	if cfg.prevLocationAreaURL == nil {
 		fmt.Println("you're on the first page")
 		return nil
@@ -132,5 +139,31 @@ func getCommands() map[string]cliCommand {
 			description: "Exit the Pokedex",
 			callback:    commandExit,
 		},
+		"explore": {
+			name:        "explore",
+			description: "Explore a specific location area for Pokemon",
+			callback:    commandExplore,
+		},
 	}
+}
+
+func commandExplore(cfg *config, args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("explore requires exactly one location area name")
+	}
+
+	areaName := args[0]
+	fmt.Printf("Exploring %s...\n", areaName)
+
+	resp, err := fetchLocationArea(cfg, areaName)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Found Pokemon:")
+	for _, encounter := range resp.PokemonEncounters {
+		fmt.Printf(" - %s\n", encounter.Pokemon.Name)
+	}
+
+	return nil
 }

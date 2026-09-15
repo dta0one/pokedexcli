@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 
@@ -13,6 +14,7 @@ type config struct {
 	cache               pokecache.Cache
 	nextLocationAreaURL *string
 	prevLocationAreaURL *string
+	pokedex             map[string]Pokemon // 👈 Add the pokedex map state
 }
 
 type cliCommand struct {
@@ -144,6 +146,11 @@ func getCommands() map[string]cliCommand {
 			description: "Explore a specific location area for Pokemon",
 			callback:    commandExplore,
 		},
+		"catch": {
+			name:        "catch",
+			description: "Attempt to catch a pokemon",
+			callback:    commandCatch,
+		},
 	}
 }
 
@@ -163,6 +170,35 @@ func commandExplore(cfg *config, args []string) error {
 	fmt.Println("Found Pokemon:")
 	for _, encounter := range resp.PokemonEncounters {
 		fmt.Printf(" - %s\n", encounter.Pokemon.Name)
+	}
+
+	return nil
+}
+
+func commandCatch(cfg *config, args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("catch requires exactly one pokemon name")
+	}
+
+	pokemonName := args[0]
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
+
+	pokemon, err := fetchPokemon(cfg, pokemonName)
+	if err != nil {
+		return err
+	}
+
+	// Catch logic: Generate a random number from 0 to 300 (roughly max base exp).
+	// If the random number is greater than the pokemon's base experience, you catch it.
+	// This means a low base exp (e.g., 50) is very easy to catch,
+	// while a high base exp (e.g., 250) is much harder.
+	catchChance := rand.Intn(300)
+
+	if catchChance >= pokemon.BaseExperience {
+		fmt.Printf("%s was caught!\n", pokemon.Name)
+		cfg.pokedex[pokemon.Name] = pokemon
+	} else {
+		fmt.Printf("%s escaped!\n", pokemon.Name)
 	}
 
 	return nil

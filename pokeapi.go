@@ -7,8 +7,6 @@ import (
 	"net/http"
 )
 
-// --- MAP COMMANDS ---
-
 type LocationAreasResponse struct {
 	Count    int     `json:"count"`
 	Next     *string `json:"next"`
@@ -25,7 +23,6 @@ func fetchLocationAreas(cfg *config, pageURL *string) (LocationAreasResponse, er
 		url = *pageURL
 	}
 
-	// 1. Check cache
 	if data, ok := cfg.cache.Get(url); ok {
 		locationAreas := LocationAreasResponse{}
 		err := json.Unmarshal(data, &locationAreas)
@@ -35,7 +32,6 @@ func fetchLocationAreas(cfg *config, pageURL *string) (LocationAreasResponse, er
 		return locationAreas, nil
 	}
 
-	// 2. Fetch over network
 	resp, err := http.Get(url)
 	if err != nil {
 		return LocationAreasResponse{}, fmt.Errorf("failed to fetch location areas: %w", err)
@@ -51,7 +47,6 @@ func fetchLocationAreas(cfg *config, pageURL *string) (LocationAreasResponse, er
 		return LocationAreasResponse{}, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	// 3. Store in cache
 	cfg.cache.Add(url, data)
 
 	locationAreas := LocationAreasResponse{}
@@ -62,8 +57,6 @@ func fetchLocationAreas(cfg *config, pageURL *string) (LocationAreasResponse, er
 
 	return locationAreas, nil
 }
-
-// --- EXPLORE COMMAND ---
 
 type LocationAreaResponse struct {
 	PokemonEncounters []struct {
@@ -77,7 +70,6 @@ type LocationAreaResponse struct {
 func fetchLocationArea(cfg *config, areaName string) (LocationAreaResponse, error) {
 	url := "https://pokeapi.co/api/v2/location-area/" + areaName
 
-	// 1. Check cache
 	if data, ok := cfg.cache.Get(url); ok {
 		locationArea := LocationAreaResponse{}
 		err := json.Unmarshal(data, &locationArea)
@@ -87,7 +79,6 @@ func fetchLocationArea(cfg *config, areaName string) (LocationAreaResponse, erro
 		return locationArea, nil
 	}
 
-	// 2. Fetch over network
 	resp, err := http.Get(url)
 	if err != nil {
 		return LocationAreaResponse{}, fmt.Errorf("failed to fetch location area: %w", err)
@@ -103,7 +94,6 @@ func fetchLocationArea(cfg *config, areaName string) (LocationAreaResponse, erro
 		return LocationAreaResponse{}, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	// 3. Store in cache
 	cfg.cache.Add(url, data)
 
 	locationArea := LocationAreaResponse{}
@@ -113,4 +103,47 @@ func fetchLocationArea(cfg *config, areaName string) (LocationAreaResponse, erro
 	}
 
 	return locationArea, nil
+}
+
+type Pokemon struct {
+	Name           string `json:"name"`
+	BaseExperience int    `json:"base_experience"`
+}
+
+func fetchPokemon(cfg *config, pokemonName string) (Pokemon, error) {
+	url := "https://pokeapi.co/api/v2/pokemon/" + pokemonName
+
+	if data, ok := cfg.cache.Get(url); ok {
+		pokemon := Pokemon{}
+		err := json.Unmarshal(data, &pokemon)
+		if err != nil {
+			return Pokemon{}, fmt.Errorf("failed to unmarshal cached data: %w", err)
+		}
+		return pokemon, nil
+	}
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return Pokemon{}, fmt.Errorf("failed to fetch pokemon: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode > 299 {
+		return Pokemon{}, fmt.Errorf("bad status code: %d", resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Pokemon{}, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	cfg.cache.Add(url, data)
+
+	pokemon := Pokemon{}
+	err = json.Unmarshal(data, &pokemon)
+	if err != nil {
+		return Pokemon{}, fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
+
+	return pokemon, nil
 }

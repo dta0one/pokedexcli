@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/dta0one/pokedexcli/internal/pokecache"
@@ -14,13 +15,13 @@ type config struct {
 	cache               pokecache.Cache
 	nextLocationAreaURL *string
 	prevLocationAreaURL *string
-	pokedex             map[string]Pokemon // 👈 Add the pokedex map state
+	pokedex             map[string]Pokemon
 }
 
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config, []string) error // 👈 Add []string for args
+	callback    func(*config, []string) error
 }
 
 func startRepl(cfg *config) {
@@ -42,7 +43,7 @@ func startRepl(cfg *config) {
 		commandName := words[0]
 		args := []string{}
 		if len(words) > 1 {
-			args = words[1:] // 👈 Extract any arguments passed after the command
+			args = words[1:]
 		}
 
 		cmd, exists := commands[commandName]
@@ -72,12 +73,20 @@ func commandExit(cfg *config, args []string) error {
 }
 
 func commandHelp(cfg *config, args []string) error {
-	fmt.Println()
-	fmt.Println("Welcome to the Pokedex!")
+	fmt.Println("\nWelcome to the Pokedex!")
 	fmt.Println("Usage:")
 	fmt.Println()
 
-	for _, cmd := range getCommands() {
+	commands := getCommands()
+
+	keys := make([]string, 0, len(commands))
+	for k := range commands {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		cmd := commands[k]
 		fmt.Printf("%s: %s\n", cmd.name, cmd.description)
 	}
 	fmt.Println()
@@ -221,14 +230,12 @@ func commandInspect(cfg *config, args []string) error {
 
 	pokemonName := args[0]
 
-	// Check if the pokemon exists in the user's pokedex map
 	pokemon, ok := cfg.pokedex[pokemonName]
 	if !ok {
 		fmt.Println("you have not caught that pokemon")
 		return nil
 	}
 
-	// If caught, print out the details exactly as requested
 	fmt.Printf("Name: %s\n", pokemon.Name)
 	fmt.Printf("Height: %d\n", pokemon.Height)
 	fmt.Printf("Weight: %d\n", pokemon.Weight)
@@ -247,9 +254,21 @@ func commandInspect(cfg *config, args []string) error {
 }
 
 func commandPokedex(cfg *config, args []string) error {
-	fmt.Println("Your Pokedex:")
-	for _, pokemon := range cfg.pokedex {
-		fmt.Printf(" - %s\n", pokemon.Name)
+	total, err := fetchTotalPokemonCount(cfg)
+	if err != nil {
+		fmt.Printf("Your Pokedex (%d caught):\n", len(cfg.pokedex))
+	} else {
+		fmt.Printf("Your Pokedex (%d / %d caught):\n", len(cfg.pokedex), total)
+	}
+
+	names := make([]string, 0, len(cfg.pokedex))
+	for name := range cfg.pokedex {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		fmt.Printf(" - %s\n", name)
 	}
 	return nil
 }

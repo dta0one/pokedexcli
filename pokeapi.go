@@ -141,6 +141,10 @@ func fetchPokemon(cfg *config, pokemonName string) (Pokemon, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == 404 {
+		return Pokemon{}, fmt.Errorf("No such Pokemon!")
+	}
+
 	if resp.StatusCode > 299 {
 		return Pokemon{}, fmt.Errorf("bad status code: %d", resp.StatusCode)
 	}
@@ -159,4 +163,33 @@ func fetchPokemon(cfg *config, pokemonName string) (Pokemon, error) {
 	}
 
 	return pokemon, nil
+}
+
+type PokemonListResponse struct {
+	Count int `json:"count"`
+}
+
+func fetchTotalPokemonCount(cfg *config) (int, error) {
+	url := "https://pokeapi.co/api/v2/pokemon?limit=1"
+
+	if data, ok := cfg.cache.Get(url); ok {
+		var listResp PokemonListResponse
+		json.Unmarshal(data, &listResp)
+		return listResp.Count, nil
+	}
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err == nil {
+		cfg.cache.Add(url, data)
+		var listResp PokemonListResponse
+		json.Unmarshal(data, &listResp)
+		return listResp.Count, nil
+	}
+	return 0, err
 }
